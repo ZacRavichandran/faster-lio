@@ -70,7 +70,7 @@ class LaserMapping {
     void PointBodyToWorld(PointType const *pi, PointType *const po);
     void PointBodyToWorld(const common::V3F &pi, PointType *const po);
     void PointBodyLidarToIMU(PointType const *const pi, PointType *const po);
-
+    void PointBodyLidarToIMU(PointType const *const pi, pcl::PointXYZI *const po);
     void MapIncremental();
 
     void SubAndPubToROS(ros::NodeHandle &nh);
@@ -129,7 +129,11 @@ class LaserMapping {
     bool time_sync_en_ = false;
     double timediff_lidar_wrt_imu_ = 0.0;
     double last_timestamp_lidar_ = 0;
+
+    // Note: point clouds and odometry are both published on lidar_end_time_,
+    // i.e., measures_.lidar_bag_time_ + lidar_mean_scantime_;
     double lidar_end_time_ = 0;
+
     double last_timestamp_imu_ = -1.0;
     double first_lidar_time_ = 0.0;
     bool lidar_pushed_ = false;

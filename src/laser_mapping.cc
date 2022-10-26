@@ -262,16 +262,20 @@ LaserMapping::LaserMapping() {
 }
 
 void LaserMapping::Run() {
+    // Note: find IMU and LIDAR scan that have matching timestamp, point cloud size remains the same during this process
     if (!SyncPackages()) {
         return;
     }
 
     /// IMU process, kf prediction, undistortion
+    // Note: scan_undistort_ is the undistorted point cloud of preprocessed cloud, which is smaller than the full sweep
+    // size (e.g. 1024x64), point cloud size remains the same during this process
     p_imu_->Process(measures_, kf_, scan_undistort_);
     if (scan_undistort_->empty() || (scan_undistort_ == nullptr)) {
         LOG(WARNING) << "No point, skip this scan!";
         return;
     }
+    // ROS_INFO_STREAM("size of point cloud "<< scan_undistort_->points.size());
 
     /// the first scan
     if (flg_first_scan_) {
@@ -362,7 +366,12 @@ void LaserMapping::StandardPCLCallBack(const sensor_msgs::PointCloud2::ConstPtr 
             }
 
             PointCloudType::Ptr ptr(new PointCloudType());
-            preprocess_->Process(msg, ptr);
+            // Note: point cloud preprocess, this reduces the point cloud size
+            pcl::PointCloud<ouster_ros::Point> points;
+            pcl::fromROSMsg(*msg, points);
+            ROS_INFO_STREAM("size of point cloud before preprocess" << points.size());
+            preprocess_->PCProcess(msg, ptr);
+            ROS_INFO_STREAM("size of point cloud after preprocess" << ptr->size());
             lidar_buffer_.push_back(ptr);
             time_buffer_.push_back(msg->header.stamp.toSec());
             last_timestamp_lidar_ = msg->header.stamp.toSec();
@@ -397,7 +406,7 @@ void LaserMapping::LivoxPCLCallBack(const livox_ros_driver::CustomMsg::ConstPtr 
             }
 
             PointCloudType::Ptr ptr(new PointCloudType());
-            preprocess_->Process(msg, ptr);
+            preprocess_->PCProcess(msg, ptr);
             lidar_buffer_.emplace_back(ptr);
             time_buffer_.emplace_back(last_timestamp_lidar_);
         },
@@ -434,6 +443,7 @@ bool LaserMapping::SyncPackages() {
 
     /*** push a lidar scan ***/
     if (!lidar_pushed_) {
+        // Note: meas_.lidar_ is a complete point cloud taken from lidar_buffer_
         measures_.lidar_ = lidar_buffer_.front();
         measures_.lidar_bag_time_ = time_buffer_.front();
 
@@ -709,6 +719,7 @@ void LaserMapping::PublishFrameWorld() {
     if (dense_pub_en_) {
         PointCloudType::Ptr laserCloudFullRes(scan_undistort_);
         int size = laserCloudFullRes->points.size();
+        ROS_INFO_STREAM("size of point cloud being published: " << size);
         laserCloudWorld.reset(new PointCloudType(size, 1));
         for (int i = 0; i < size; i++) {
             PointBodyToWorld(&laserCloudFullRes->points[i], &laserCloudWorld->points[i]);
@@ -748,11 +759,32 @@ void LaserMapping::PublishFrameWorld() {
 }
 
 void LaserMapping::PublishFrameBody(const ros::Publisher &pub_laser_cloud_body) {
-    int size = scan_undistort_->points.size();
-    PointCloudType::Ptr laser_cloud_imu_body(new PointCloudType(size, 1));
+    // int size = scan_undistort_->points.size();
+    int size_scan = scan_undistort_->points.size();
 
-    for (int i = 0; i < size; i++) {
+    // Note: set the point cloud to size that matches the original input, so that the ros_numpy.numpify function in the
+    // infer node can parse it properly
+    int size_full = size_scan;  // 1024 * 64;
+    // PointCloudType::Ptr laser_cloud_imu_body(new PointCloudType(size_full, 1));
+
+    // Note: change to PointXYZI instead of PointXYZINormal to be compatible with ros_numpy.numpify
+    pcl::PointCloud<pcl::PointXYZI>::Ptr laser_cloud_imu_body(new pcl::PointCloud<pcl::PointXYZI>(size_full, 1));
+
+    for (int i = 0; i < size_scan; i++) {
         PointBodyLidarToIMU(&scan_undistort_->points[i], &laser_cloud_imu_body->points[i]);
+    }
+
+    // Note: set the point cloud to size that matches the original input, so that the ros_numpy.numpify function in the
+    // infer node can parse it properly
+    if (size_scan < size_full) {
+        for (int i = size_scan; i < size_full; i++) {
+            laser_cloud_imu_body->points[i].x = std::numeric_limits<float>::quiet_NaN();
+            laser_cloud_imu_body->points[i].y = std::numeric_limits<float>::quiet_NaN();
+            laser_cloud_imu_body->points[i].z = std::numeric_limits<float>::quiet_NaN();
+            laser_cloud_imu_body->points[i].intensity = std::numeric_limits<float>::quiet_NaN();
+        }
+        ROS_INFO_STREAM("Appending NaNs to the end of the point cloud to make the point cloud size as "
+                        << size_full << " so that the infer node can consume.");
     }
 
     sensor_msgs::PointCloud2 laserCloudmsg;
@@ -761,7 +793,7 @@ void LaserMapping::PublishFrameBody(const ros::Publisher &pub_laser_cloud_body) 
     laserCloudmsg.header.frame_id = "body";
     pub_laser_cloud_body.publish(laserCloudmsg);
     publish_count_ -= options::PUBFRAME_PERIOD;
-}
+}  // namespace faster_lio
 
 void LaserMapping::PublishFrameEffectWorld(const ros::Publisher &pub_laser_cloud_effect_world) {
     int size = corr_pts_.size();
@@ -831,6 +863,16 @@ void LaserMapping::PointBodyToWorld(const common::V3F &pi, PointType *const po) 
 }
 
 void LaserMapping::PointBodyLidarToIMU(PointType const *const pi, PointType *const po) {
+    common::V3D p_body_lidar(pi->x, pi->y, pi->z);
+    common::V3D p_body_imu(state_point_.offset_R_L_I * p_body_lidar + state_point_.offset_T_L_I);
+
+    po->x = p_body_imu(0);
+    po->y = p_body_imu(1);
+    po->z = p_body_imu(2);
+    po->intensity = pi->intensity;
+}
+
+void LaserMapping::PointBodyLidarToIMU(PointType const *const pi, pcl::PointXYZI *const po) {
     common::V3D p_body_lidar(pi->x, pi->y, pi->z);
     common::V3D p_body_imu(state_point_.offset_R_L_I * p_body_lidar + state_point_.offset_T_L_I);
 

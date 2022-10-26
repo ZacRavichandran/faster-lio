@@ -11,12 +11,12 @@ void PointCloudPreprocess::Set(LidarType lid_type, double bld, int pfilt_num) {
     point_filter_num_ = pfilt_num;
 }
 
-void PointCloudPreprocess::Process(const livox_ros_driver::CustomMsg::ConstPtr &msg, PointCloudType::Ptr &pcl_out) {
+void PointCloudPreprocess::PCProcess(const livox_ros_driver::CustomMsg::ConstPtr &msg, PointCloudType::Ptr &pcl_out) {
     AviaHandler(msg);
     *pcl_out = cloud_out_;
 }
 
-void PointCloudPreprocess::Process(const sensor_msgs::PointCloud2::ConstPtr &msg, PointCloudType::Ptr &pcl_out) {
+void PointCloudPreprocess::PCProcess(const sensor_msgs::PointCloud2::ConstPtr &msg, PointCloudType::Ptr &pcl_out) {
     switch (lidar_type_) {
         case LidarType::OUST64:
             Oust64Handler(msg);
@@ -87,11 +87,12 @@ void PointCloudPreprocess::Oust64Handler(const sensor_msgs::PointCloud2::ConstPt
     cloud_out_.reserve(plsize);
 
     for (int i = 0; i < pl_orig.points.size(); i++) {
+        // Note: pointcloud preprocess step 1 only take every point_filter_num_ points
         if (i % point_filter_num_ != 0) continue;
 
+        // Note: pointcloud preprocess step 2 remove points that are too close
         double range = pl_orig.points[i].x * pl_orig.points[i].x + pl_orig.points[i].y * pl_orig.points[i].y +
                        pl_orig.points[i].z * pl_orig.points[i].z;
-
         if (range < (blind_ * blind_)) continue;
 
         Eigen::Vector3d pt_vec;

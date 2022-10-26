@@ -173,6 +173,7 @@ void ImuProcess::UndistortPcl(const common::MeasureGroup &meas, esekfom::esekf<s
     const double &pcl_end_time = meas.lidar_end_time_;
 
     /*** sort point clouds by offset time ***/
+    // Note: meas_.lidar_ is a complete point cloud taken from lidar_buffer_
     pcl_out = *(meas.lidar_);
     sort(pcl_out.points.begin(), pcl_out.points.end(), time_list);
 
