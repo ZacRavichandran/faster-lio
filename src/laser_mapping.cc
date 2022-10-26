@@ -762,29 +762,11 @@ void LaserMapping::PublishFrameBody(const ros::Publisher &pub_laser_cloud_body) 
     // int size = scan_undistort_->points.size();
     int size_scan = scan_undistort_->points.size();
 
-    // Note: set the point cloud to size that matches the original input, so that the ros_numpy.numpify function in the
-    // infer node can parse it properly
-    int size_full = size_scan;  // 1024 * 64;
-    // PointCloudType::Ptr laser_cloud_imu_body(new PointCloudType(size_full, 1));
-
     // Note: change to PointXYZI instead of PointXYZINormal to be compatible with ros_numpy.numpify
-    pcl::PointCloud<pcl::PointXYZI>::Ptr laser_cloud_imu_body(new pcl::PointCloud<pcl::PointXYZI>(size_full, 1));
+    pcl::PointCloud<pcl::PointXYZI>::Ptr laser_cloud_imu_body(new pcl::PointCloud<pcl::PointXYZI>(size_scan, 1));
 
     for (int i = 0; i < size_scan; i++) {
         PointBodyLidarToIMU(&scan_undistort_->points[i], &laser_cloud_imu_body->points[i]);
-    }
-
-    // Note: set the point cloud to size that matches the original input, so that the ros_numpy.numpify function in the
-    // infer node can parse it properly
-    if (size_scan < size_full) {
-        for (int i = size_scan; i < size_full; i++) {
-            laser_cloud_imu_body->points[i].x = std::numeric_limits<float>::quiet_NaN();
-            laser_cloud_imu_body->points[i].y = std::numeric_limits<float>::quiet_NaN();
-            laser_cloud_imu_body->points[i].z = std::numeric_limits<float>::quiet_NaN();
-            laser_cloud_imu_body->points[i].intensity = std::numeric_limits<float>::quiet_NaN();
-        }
-        ROS_INFO_STREAM("Appending NaNs to the end of the point cloud to make the point cloud size as "
-                        << size_full << " so that the infer node can consume.");
     }
 
     sensor_msgs::PointCloud2 laserCloudmsg;
