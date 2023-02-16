@@ -76,6 +76,7 @@ class PointCloudPreprocess {
     // accessors
     double &Blind() { return blind_; }
     int &NumScans() { return num_scans_; }
+    int &NumHorizontalScans() { return num_horizontal_scans_; }
     int &PointFilterNum() { return point_filter_num_; }
     bool &FeatureEnabled() { return feature_enabled_; }
     float &TimeScale() { return time_scale_; }
@@ -93,6 +94,7 @@ class PointCloudPreprocess {
     bool feature_enabled_ = false;
     int point_filter_num_ = 1;
     int num_scans_ = 6;
+    int num_horizontal_scans_ = 1024;
     double blind_ = 0.01;
     float time_scale_ = 1e-3;
     bool given_offset_time_ = false;

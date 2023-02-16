@@ -80,7 +80,8 @@ bool LaserMapping::LoadParams(ros::NodeHandle &nh) {
     nh.param<double>("preprocess/blind", preprocess_->Blind(), 0.01);
     nh.param<float>("preprocess/time_scale", preprocess_->TimeScale(), 1e-3);
     nh.param<int>("preprocess/lidar_type", lidar_type, 1);
-    nh.param<int>("preprocess/scan_line", preprocess_->NumScans(), 16);
+    nh.param<int>("preprocess/vertical_resolution", preprocess_->NumScans(), 16);
+    nh.param<int>("preprocess/horizontal_resolution", preprocess_->NumHorizontalScans(), 1024);
     nh.param<int>("point_filter_num", preprocess_->PointFilterNum(), 2);
     nh.param<bool>("feature_extract_enable", preprocess_->FeatureEnabled(), false);
     nh.param<bool>("runtime_pos_log_enable", runtime_pos_log_, true);
@@ -169,7 +170,8 @@ bool LaserMapping::LoadParamsFromYAML(const std::string &yaml_file) {
         preprocess_->Blind() = yaml["preprocess"]["blind"].as<double>();
         preprocess_->TimeScale() = yaml["preprocess"]["time_scale"].as<double>();
         lidar_type = yaml["preprocess"]["lidar_type"].as<int>();
-        preprocess_->NumScans() = yaml["preprocess"]["scan_line"].as<int>();
+        preprocess_->NumScans() = yaml["preprocess"]["vertical_resolution"].as<int>();
+        preprocess_->NumHorizontalScans() = yaml["preprocess"]["horizontal_resolution"].as<int>();
         preprocess_->PointFilterNum() = yaml["point_filter_num"].as<int>();
         preprocess_->FeatureEnabled() = yaml["feature_extract_enable"].as<bool>();
         extrinsic_est_en_ = yaml["mapping"]["extrinsic_est_en"].as<bool>();
@@ -764,7 +766,7 @@ void LaserMapping::PublishFrameBody(const ros::Publisher &pub_laser_cloud_body) 
 
     // Note: set the point cloud to size that matches the original input, so that the ros_numpy.numpify function in the
     // infer node and process node organized points and reshaping functions can parse it properly
-    int size_full = 1024 * 64;  // 1024 * 64;
+    int size_full = preprocess_->NumHorizontalScans() * preprocess_->NumScans();  // 1024 * 64;
     // PointCloudType::Ptr laser_cloud_imu_body(new PointCloudType(size_full, 1));
 
     // Note: change to PointXYZI instead of PointXYZINormal to be compatible with ros_numpy.numpify
