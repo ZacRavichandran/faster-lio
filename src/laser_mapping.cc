@@ -764,7 +764,7 @@ void LaserMapping::PublishFrameBody(const ros::Publisher &pub_laser_cloud_body) 
 
     // Note: set the point cloud to size that matches the original input, so that the ros_numpy.numpify function in the
     // infer node and process node organized points and reshaping functions can parse it properly
-    int size_full = 1024*64;  // 1024 * 64;
+    int size_full = 1024 * 64;  // 1024 * 64;
     // PointCloudType::Ptr laser_cloud_imu_body(new PointCloudType(size_full, 1));
 
     // Note: change to PointXYZI instead of PointXYZINormal to be compatible with ros_numpy.numpify
@@ -890,7 +890,7 @@ void LaserMapping::Finish() {
         std::string file_name = std::string("scans.pcd");
         std::string all_points_dir(std::string(std::string(ROOT_DIR) + "PCD/") + file_name);
         pcl::PCDWriter pcd_writer;
-        LOG(INFO) << "current scan saved to /PCD/" << file_name;
+        ROS_WARN_STREAM("current scan saved to /PCD/" << file_name);
         pcd_writer.writeBinary(all_points_dir, *pcl_wait_save_);
     }
 
