@@ -25,6 +25,5 @@
     <node pkg="tf2_ros" type="static_transform_publisher" name="static_tf_body_to_ouster" args="0.0 0.0 0.0 0.0 0.0 0.0 1.0 /body /os_sensor"/>
     <node pkg="tf2_ros" type="static_transform_publisher" name="static_tf_base_link_to_ouster" args="0.15 0.0 0.158 0.0, 0.0, 1.0, 0.0 /base_link /os_sensor"/>
 
-158.7mm
 
 </launch>
