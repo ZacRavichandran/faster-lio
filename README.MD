@@ -1,5 +1,6 @@
-## FasterLIO
+#NEVER USE RelWithDebInfo, faster-lio will go crazy.
 
+## FasterLIO
 This is the code repository of FasterLIO by Chunge Bai, Tao Xiang, Yajie Chen, Haoqian Wang, Fang Zhang and Xiang Gao.
 
 Faster-LIO is a light-weight Lidar-inertial odometry for lidar pose tracking and point cloud mapping. It is developed on
