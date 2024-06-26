@@ -1,4 +1,4 @@
-#NEVER USE RelWithDebInfo, faster-lio will go crazy.
+# NEVER USE RelWithDebInfo, faster-lio will go crazy.
 
 ## FasterLIO
 This is the code repository of FasterLIO by Chunge Bai, Tao Xiang, Yajie Chen, Haoqian Wang, Fang Zhang and Xiang Gao.
